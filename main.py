@@ -1,20 +1,24 @@
 import random
 import string
+from contextlib import asynccontextmanager
+from typing import Annotated
 
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, HttpUrl
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.responses import RedirectResponse
+from sqlmodel import Session, select
 
-app = FastAPI(title="URL Shortener")
+from database import *
+from models import *
 
-class LinkReq(BaseModel):
-    url: HttpUrl
 
-class Link(BaseModel):
-    code: str
-    url: str
-    count: int = 0
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    create_db_and_tables()
+    yield
 
-storage: dict[str, Link] = {}
+app = FastAPI(title="URL Shortener", lifespan=lifespan)
+
+SessionDep = Annotated[Session, Depends(get_session)]
 
 @app.get("/health")
 def health_check():
@@ -24,31 +28,45 @@ def health_check():
 def get_storage():
     return storage
 
-@app.get("/{code}")
-def get_code(code):
-    if code in storage:
-        storage[code].count += 1
-        return storage[code].url
-    else:
-        raise HTTPException(status_code=404, detail="code not found")
 
 @app.get("/{code}/stats")
-def show_code_stats(code):
-    return storage[code]
+def show_code_stats(code: str, session: SessionDep):
+    link = session.get(LinkRecord, code)
+    if link is None:
+        raise HTTPException(status_code=404, detail="code not found")
+    return link
 
-@app.post("/links", response_model=Link, status_code=201)
-def create_link(req: LinkReq):
+@app.get("/{code}")
+def get_code(code: str, session: SessionDep):
+    link = session.get(LinkRecord, code)
+    if link is None:
+        raise HTTPException(status_code=404, detail="code not found")
+
+    link.count += 1
+    session.add(link)
+    session.commit()
+    return RedirectResponse(url=link.url, status_code=307)
+
+@app.post("/links", response_model=LinkResp, status_code=201)
+def create_link(req: LinkReq, session: SessionDep):
     newurl = str(req.url)
 
-    # naive check for previous entries to prevent duplication. good enough for personal usage, but would not scale well.
-    for entry in storage.values():
-        if newurl == entry.url:
-            return entry
+    existing = session.exec(
+        select(LinkRecord).where(LinkRecord.url == newurl)
+    ).first()
+
+    if existing is not None:
+        return existing
 
     while True:
         code = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
-        if code not in storage:
+        if session.get(LinkRecord, code) is None:
             break
-    link = Link(code = code, url = newurl)
-    storage[code] = link
+
+    link = LinkRecord(code = code, url = newurl)
+
+    session.add(link)
+    session.commit()
+    session.refresh(link)
+    
     return link
