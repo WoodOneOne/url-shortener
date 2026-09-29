@@ -47,3 +47,6 @@ def test_redirect(client):
 
     assert response.status_code == 307
     assert response.headers["location"] == "https://example.com/"
+
+def test_CI():
+    assert 1 == 1
