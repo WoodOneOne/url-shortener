@@ -49,4 +49,4 @@ def test_redirect(client):
     assert response.headers["location"] == "https://example.com/"
 
 def test_CI():
-    assert 1 == 1
+    assert 1 == 0
