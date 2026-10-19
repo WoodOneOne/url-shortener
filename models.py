@@ -12,7 +12,7 @@ class LinkRecord(SQLModel, table=True):
     code: str = Field(primary_key=True)
     url: str = Field(index=True)
     count: int = Field(default=0)
-    creation_date: datetime = Field(default=datetime.now(timezone.utc))
+    creation_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class LinkResp(SQLModel):

@@ -1,0 +1,9 @@
+services:
+  # Application service. The `target: builder` line builds the development
+  # image (includes a shell and tools); the production stage of the
+  # Dockerfile is unused in development.
+  server:
+    build:
+      context: .
+    ports:
+      - 8000:8000

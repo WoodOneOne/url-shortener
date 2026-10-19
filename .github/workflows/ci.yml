@@ -29,3 +29,6 @@ jobs:
       
       - name: Run tests
         run: python -m pytest
+
+      - name: Build container image
+        run: docker build --tag url-shortener:${{ github.sha }} .

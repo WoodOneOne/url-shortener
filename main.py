@@ -27,11 +27,6 @@ def health_check():
     return {"status": "healthy"}
 
 
-@app.get("/storage")
-def get_storage():
-    return storage
-
-
 @app.get("/{code}/stats")
 def show_code_stats(code: str, session: SessionDep):
     link = session.get(LinkRecord, code)
