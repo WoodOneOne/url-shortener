@@ -23,6 +23,9 @@ jobs:
       
       - name: Run linting
         run: python -m ruff check .
+
+      - name: Check formatting
+        run: python -m ruff format --check .
       
       - name: Run tests
         run: python -m pytest
